@@ -1,0 +1,44 @@
+extends ../layout
+
+block content
+  header.row
+    .col
+      h2.display-2 Hosted Fields
+      p.lead Make a test payment
+
+  form#hf-payment-form(action="/checkouts" method="post")
+    .form-row
+      .form-group.col
+        label(for="name") Full Name
+        input.form-control#name(name="name" type="text" autocomplete="cc-name" placeholder="Joan Q. Public")
+    .form-row
+      .form-group.col
+        label(for="amount") Amount
+        input.form-control#amount(name="amount" type="tel" min="1" value="10")
+    .form-row
+      .form-group.col
+        p#helper-text.helper-text
+        label(for="card-number") Card Number
+        #card-number.form-control
+    .form-row
+      .form-group.col
+        label(for="expiration-month") Month
+        #expiration-month.form-control
+      .form-group.col
+        label(for="expiration-year") Year
+        #expiration-year.form-control
+    .form-row
+      .form-group.col
+        label(for="cvv") CVV
+        #cvv.form-control
+    .form-row
+      .form-group.col
+        label(for="postal-code") Postal Code
+        #postal-code.form-control
+
+    input#nonce(type="hidden" name="nonce")
+    input#integration(type="hidden" name="integration" value="hosted-fields")
+
+    .form-row
+      .col
+        button#submit-button.btn.btn-lg.btn-block.btn-primary(type="submit") Pay with <span id="card-type">Card</span>

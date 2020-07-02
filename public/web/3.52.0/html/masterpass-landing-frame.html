@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+
+      .mc-spinner {
+        width: 100%;
+        height: 100%;
+        background-color: #fff;
+        background-image: -webkit-linear-gradient(-360deg, #e87600 10%, rgba(255, 153, 0, 0) 42%);
+        background-image: linear-gradient(90deg,#e87600 10%, rgba(255, 153, 0, 0) 42%);
+        animation-name: mcspinner;
+        animation-duration: 1s;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+        border-radius: 50%;
+      }
+
+      .mc-spinner::before {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 50%;
+        height: 50%;
+        content: ' ';
+        border-top-left-radius: 100%;
+        background-color: #e87600;
+      }
+
+      .mc-spinner::after {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 75%;
+        height: 75%;
+        margin: auto;
+        content: ' ';
+        border-radius: 50%;
+        background-color: #fff;
+      }
+
+      .wrapper {
+        box-sizing: border-box;
+        width: 44px;
+        height: 44px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin: -23px 0 0 -23px;
+      }
+
+      @keyframes mcspinner {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="mc-spinner"></div>
+    </div>
+    <script>
+    (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}(g.braintree || (g.braintree = {})).masterpass = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(_dereq_,module,exports){
+'use strict';
+
+function start() {}
+
+module.exports = {
+  start: start
+};
+
+},{}]},{},[1])(1)
+});
+
+    </script>
+    <script>
+      braintree.masterpass.start();
+    </script>
+  </body>
+</html>

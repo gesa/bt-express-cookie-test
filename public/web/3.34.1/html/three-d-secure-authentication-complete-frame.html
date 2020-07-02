@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <meta charset="UTF-8">
+
+  <style>
+    html {
+      display: table;
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      display: table-cell;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    svg {
+      width: 36px;
+      height: 36px;
+      display: inline-block;
+      -webkit-transform: translateZ(0);
+      -ms-transform: translateZ(0);
+      transform: translateZ(0);
+      -webkit-animation: load8 0.5s infinite linear;
+      animation: load8 0.5s infinite linear;
+    }
+
+    @-webkit-keyframes load8 {
+      0% {
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      100% {
+        -webkit-transform: rotate(360deg);
+        transform: rotate(360deg);
+      }
+    }
+    @keyframes load8 {
+      0% {
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      100% {
+        -webkit-transform: rotate(360deg);
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+
+</head>
+<body>
+
+  <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 50 50" style="enable-background:new 0 0 50 50;" xml:space="preserve">
+    <path fill="#666" d="M43.935,25.145c0-10.318-8.364-18.683-18.683-18.683c-10.318,0-18.683,8.365-18.683,18.683h4.068c0-8.071,6.543-14.615,14.615-14.615c8.072,0,14.615,6.543,14.615,14.615H43.935z"></path>
+  </svg>
+
+  <script>
+  (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}(g.braintree || (g.braintree = {})).threeDSecure = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(_dereq_,module,exports){
+'use strict';
+
+var invalidPrototcolRegex = /^(%20|\s)*(javascript|data)/im;
+var ctrlCharactersRegex = /[^\x20-\x7E]/gmi;
+var urlSchemeRegex = /^([^:]+):/gm;
+var relativeFirstCharacters = ['.', '/']
+
+function isRelativeUrl(url) {
+  return relativeFirstCharacters.indexOf(url[0]) > -1;
+}
+
+function sanitizeUrl(url) {
+  var urlScheme, urlSchemeParseResults;
+  var sanitizedUrl = url.replace(ctrlCharactersRegex, '');
+  
+  if (isRelativeUrl(sanitizedUrl)) {
+    return sanitizedUrl;
+  }
+  
+  urlSchemeParseResults = sanitizedUrl.match(urlSchemeRegex);
+
+  if (!urlSchemeParseResults) {
+    return 'about:blank';
+  }
+
+  urlScheme = urlSchemeParseResults[0];
+
+  if (invalidPrototcolRegex.test(urlScheme)) {
+    return 'about:blank';
+  }
+
+  return sanitizedUrl;
+}
+
+module.exports = {
+  sanitizeUrl: sanitizeUrl
+};
+
+},{}],2:[function(_dereq_,module,exports){
+(function (global){
+'use strict';
+
+var win, framebus;
+var popups = [];
+var subscribers = {};
+var prefix = '/*framebus*/';
+
+function include(popup) {
+  if (popup == null) { return false; }
+  if (popup.Window == null) { return false; }
+  if (popup.constructor !== popup.Window) { return false; }
+
+  popups.push(popup);
+  return true;
+}
+
+function target(origin) {
+  var key;
+  var targetedFramebus = {};
+
+  for (key in framebus) {
+    if (!framebus.hasOwnProperty(key)) { continue; }
+
+    targetedFramebus[key] = framebus[key];
+  }
+
+  targetedFramebus._origin = origin || '*';
+
+  return targetedFramebus;
+}
+
+function publish(event) {
+  var payload, args;
+  var origin = _getOrigin(this); // eslint-disable-line no-invalid-this
+
+  if (_isntString(event)) { return false; }
+  if (_isntString(origin)) { return false; }
+
+  args = Array.prototype.slice.call(arguments, 1);
+
+  payload = _packagePayload(event, args, origin);
+  if (payload === false) { return false; }
+
+  _broadcast(win.top || win.self, payload, origin);
+
+  return true;
+}
+
+function subscribe(event, fn) {
+  var origin = _getOrigin(this); // eslint-disable-line no-invalid-this
+
+  if (_subscriptionArgsInvalid(event, fn, origin)) { return false; }
+
+  subscribers[origin] = subscribers[origin] || {};
+  subscribers[origin][event] = subscribers[origin][event] || [];
+  subscribers[origin][event].push(fn);
+
+  return true;
+}
+
+function unsubscribe(event, fn) {
+  var i, subscriberList;
+  var origin = _getOrigin(this); // eslint-disable-line no-invalid-this
+
+  if (_subscriptionArgsInvalid(event, fn, origin)) { return false; }
+
+  subscriberList = subscribers[origin] && subscribers[origin][event];
+  if (!subscriberList) { return false; }
+
+  for (i = 0; i < subscriberList.length; i++) {
+    if (subscriberList[i] === fn) {
+      subscriberList.splice(i, 1);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function _getOrigin(scope) {
+  return scope && scope._origin || '*';
+}
+
+function _isntString(string) {
+  return typeof string !== 'string';
+}
+
+function _packagePayload(event, args, origin) {
+  var packaged = false;
+  var payload = {
+    event: event,
+    origin: origin
+  };
+  var reply = args[args.length - 1];
+
+  if (typeof reply === 'function') {
+    payload.reply = _subscribeReplier(reply, origin);
+    args = args.slice(0, -1);
+  }
+
+  payload.args = args;
+
+  try {
+    packaged = prefix + JSON.stringify(payload);
+  } catch (e) {
+    throw new Error('Could not stringify event: ' + e.message);
+  }
+  return packaged;
+}
+
+function _unpackPayload(e) {
+  var payload, replyOrigin, replySource, replyEvent;
+
+  if (e.data.slice(0, prefix.length) !== prefix) { return false; }
+
+  try {
+    payload = JSON.parse(e.data.slice(prefix.length));
+  } catch (err) {
+    return false;
+  }
+
+  if (payload.reply != null) {
+    replyOrigin = e.origin;
+    replySource = e.source;
+    replyEvent = payload.reply;
+
+    payload.reply = function reply(data) { // eslint-disable-line consistent-return
+      var replyPayload = _packagePayload(replyEvent, [data], replyOrigin);
+
+      if (replyPayload === false) { return false; }
+
+      replySource.postMessage(replyPayload, replyOrigin);
+    };
+
+    payload.args.push(payload.reply);
+  }
+
+  return payload;
+}
+
+function _attach(w) {
+  if (win) { return; }
+  win = w || global;
+
+  if (win.addEventListener) {
+    win.addEventListener('message', _onmessage, false);
+  } else if (win.attachEvent) {
+    win.attachEvent('onmessage', _onmessage);
+  } else if (win.onmessage === null) {
+    win.onmessage = _onmessage;
+  } else {
+    win = null;
+  }
+}
+
+// removeIf(production)
+function _detach() {
+  if (win == null) { return; }
+
+  if (win.removeEventListener) {
+    win.removeEventListener('message', _onmessage, false);
+  } else if (win.detachEvent) {
+    win.detachEvent('onmessage', _onmessage);
+  } else if (win.onmessage === _onmessage) {
+    win.onmessage = null;
+  }
+
+  win = null;
+  popups = [];
+  subscribers = {};
+}
+// endRemoveIf(production)
+
+function _uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    var r = Math.random() * 16 | 0;
+    var v = c === 'x' ? r : r & 0x3 | 0x8;
+
+    return v.toString(16);
+  });
+}
+
+function _onmessage(e) {
+  var payload;
+
+  if (_isntString(e.data)) { return; }
+
+  payload = _unpackPayload(e);
+  if (!payload) { return; }
+
+  _dispatch('*', payload.event, payload.args, e);
+  _dispatch(e.origin, payload.event, payload.args, e);
+  _broadcastPopups(e.data, payload.origin, e.source);
+}
+
+function _dispatch(origin, event, args, e) {
+  var i;
+
+  if (!subscribers[origin]) { return; }
+  if (!subscribers[origin][event]) { return; }
+
+  for (i = 0; i < subscribers[origin][event].length; i++) {
+    subscribers[origin][event][i].apply(e, args);
+  }
+}
+
+function _hasOpener(frame) {
+  if (frame.top !== frame) { return false; }
+  if (frame.opener == null) { return false; }
+  if (frame.opener === frame) { return false; }
+  if (frame.opener.closed === true) { return false; }
+
+  return true;
+}
+
+function _broadcast(frame, payload, origin) {
+  var i = 0;
+  var frameToBroadcastTo;
+
+  try {
+    frame.postMessage(payload, origin);
+
+    if (_hasOpener(frame)) {
+      _broadcast(frame.opener.top, payload, origin);
+    }
+
+    // previously, our max value was frame.frames.length
+    // but frames.length inherits from window.length
+    // which can be overwritten if a developer does
+    // `var length = value;` outside of a function
+    // scope, it'll prevent us from looping through
+    // all the frames. With this, we loop through
+    // until there are no longer any frames
+    while (frameToBroadcastTo = frame.frames[i]) { // eslint-disable-line no-cond-assign
+      _broadcast(frameToBroadcastTo, payload, origin);
+      i++;
+    }
+  } catch (_) { /* ignored */ }
+}
+
+function _broadcastPopups(payload, origin, source) {
+  var i, popup;
+
+  for (i = popups.length - 1; i >= 0; i--) {
+    popup = popups[i];
+
+    if (popup.closed === true) {
+      popups = popups.slice(i, 1);
+    } else if (source !== popup) {
+      _broadcast(popup.top, payload, origin);
+    }
+  }
+}
+
+function _subscribeReplier(fn, origin) {
+  var uuid = _uuid();
+
+  function replier(d, o) {
+    fn(d, o);
+    framebus.target(origin).unsubscribe(uuid, replier);
+  }
+
+  framebus.target(origin).subscribe(uuid, replier);
+  return uuid;
+}
+
+function _subscriptionArgsInvalid(event, fn, origin) {
+  if (_isntString(event)) { return true; }
+  if (typeof fn !== 'function') { return true; }
+  if (_isntString(origin)) { return true; }
+
+  return false;
+}
+
+_attach();
+
+framebus = {
+  target: target,
+  // removeIf(production)
+  _packagePayload: _packagePayload,
+  _unpackPayload: _unpackPayload,
+  _attach: _attach,
+  _detach: _detach,
+  _dispatch: _dispatch,
+  _broadcast: _broadcast,
+  _subscribeReplier: _subscribeReplier,
+  _subscriptionArgsInvalid: _subscriptionArgsInvalid,
+  _onmessage: _onmessage,
+  _uuid: _uuid,
+  _getSubscribers: function () { return subscribers; },
+  _win: function () { return win; },
+  // endRemoveIf(production)
+  include: include,
+  publish: publish,
+  pub: publish,
+  trigger: publish,
+  emit: publish,
+  subscribe: subscribe,
+  sub: subscribe,
+  on: subscribe,
+  unsubscribe: unsubscribe,
+  unsub: unsubscribe,
+  off: unsubscribe
+};
+
+module.exports = framebus;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],3:[function(_dereq_,module,exports){
+'use strict';
+
+var enumerate = _dereq_('./enumerate');
+
+/**
+ * @class
+ * @global
+ * @param {object} options Construction options
+ * @classdesc This class is used to report error conditions, frequently as the first parameter to callbacks throughout the Braintree SDK.
+ * @description <strong>You cannot use this constructor directly. Interact with instances of this class through {@link callback callbacks}.</strong>
+ */
+function BraintreeError(options) {
+  if (!BraintreeError.types.hasOwnProperty(options.type)) {
+    throw new Error(options.type + ' is not a valid type.');
+  }
+
+  if (!options.code) {
+    throw new Error('Error code required.');
+  }
+
+  if (!options.message) {
+    throw new Error('Error message required.');
+  }
+
+  this.name = 'BraintreeError';
+
+  /**
+   * @type {string}
+   * @description A code that corresponds to specific errors.
+   */
+  this.code = options.code;
+
+  /**
+   * @type {string}
+   * @description A short description of the error.
+   */
+  this.message = options.message;
+
+  /**
+   * @type {BraintreeError.types}
+   * @description The type of error.
+   */
+  this.type = options.type;
+
+  /**
+   * @type {object=}
+   * @description Additional information about the error, such as an underlying network error response.
+   */
+  this.details = options.details;
+}
+
+BraintreeError.prototype = Object.create(Error.prototype);
+BraintreeError.prototype.constructor = BraintreeError;
+
+/**
+ * Enum for {@link BraintreeError} types.
+ * @name BraintreeError.types
+ * @enum
+ * @readonly
+ * @memberof BraintreeError
+ * @property {string} CUSTOMER An error caused by the customer.
+ * @property {string} MERCHANT An error that is actionable by the merchant.
+ * @property {string} NETWORK An error due to a network problem.
+ * @property {string} INTERNAL An error caused by Braintree code.
+ * @property {string} UNKNOWN An error where the origin is unknown.
+ */
+BraintreeError.types = enumerate([
+  'CUSTOMER',
+  'MERCHANT',
+  'NETWORK',
+  'INTERNAL',
+  'UNKNOWN'
+]);
+
+BraintreeError.findRootError = function (err) {
+  if (err instanceof BraintreeError && err.details && err.details.originalError) {
+    return BraintreeError.findRootError(err.details.originalError);
+  }
+
+  return err;
+};
+
+module.exports = BraintreeError;
+
+},{"./enumerate":7}],4:[function(_dereq_,module,exports){
+'use strict';
+
+var isWhitelistedDomain = _dereq_('../is-whitelisted-domain');
+
+function checkOrigin(postMessageOrigin, merchantUrl) {
+  var merchantOrigin, merchantHost;
+  var a = document.createElement('a');
+
+  a.href = merchantUrl;
+
+  if (a.protocol === 'https:') {
+    merchantHost = a.host.replace(/:443$/, '');
+  } else if (a.protocol === 'http:') {
+    merchantHost = a.host.replace(/:80$/, '');
+  } else {
+    merchantHost = a.host;
+  }
+
+  merchantOrigin = a.protocol + '//' + merchantHost;
+
+  if (merchantOrigin === postMessageOrigin) { return true; }
+
+  a.href = postMessageOrigin;
+
+  return isWhitelistedDomain(postMessageOrigin);
+}
+
+module.exports = {
+  checkOrigin: checkOrigin
+};
+
+},{"../is-whitelisted-domain":8}],5:[function(_dereq_,module,exports){
+'use strict';
+
+var enumerate = _dereq_('../enumerate');
+
+module.exports = enumerate([
+  'CONFIGURATION_REQUEST'
+], 'bus:');
+
+},{"../enumerate":7}],6:[function(_dereq_,module,exports){
+'use strict';
+
+var bus = _dereq_('framebus');
+var events = _dereq_('./events');
+var checkOrigin = _dereq_('./check-origin').checkOrigin;
+var BraintreeError = _dereq_('../braintree-error');
+
+function BraintreeBus(options) {
+  options = options || {};
+
+  this.channel = options.channel;
+  if (!this.channel) {
+    throw new BraintreeError({
+      type: BraintreeError.types.INTERNAL,
+      code: 'MISSING_CHANNEL_ID',
+      message: 'Channel ID must be specified.'
+    });
+  }
+
+  this.merchantUrl = options.merchantUrl;
+
+  this._isDestroyed = false;
+  this._isVerbose = false;
+
+  this._listeners = [];
+
+  this._log('new bus on channel ' + this.channel, [location.href]);
+}
+
+BraintreeBus.prototype.on = function (eventName, originalHandler) {
+  var namespacedEvent, args;
+  var handler = originalHandler;
+  var self = this;
+
+  if (this._isDestroyed) { return; }
+
+  if (this.merchantUrl) {
+    handler = function () {
+      /* eslint-disable no-invalid-this */
+      if (checkOrigin(this.origin, self.merchantUrl)) {
+        originalHandler.apply(this, arguments);
+      }
+      /* eslint-enable no-invalid-this */
+    };
+  }
+
+  namespacedEvent = this._namespaceEvent(eventName);
+  args = Array.prototype.slice.call(arguments);
+  args[0] = namespacedEvent;
+  args[1] = handler;
+
+  this._log('on', args);
+  bus.on.apply(bus, args);
+
+  this._listeners.push({
+    eventName: eventName,
+    handler: handler,
+    originalHandler: originalHandler
+  });
+};
+
+BraintreeBus.prototype.emit = function (eventName) {
+  var args;
+
+  if (this._isDestroyed) { return; }
+
+  args = Array.prototype.slice.call(arguments);
+  args[0] = this._namespaceEvent(eventName);
+
+  this._log('emit', args);
+  bus.emit.apply(bus, args);
+};
+
+BraintreeBus.prototype._offDirect = function (eventName) {
+  var args = Array.prototype.slice.call(arguments);
+
+  if (this._isDestroyed) { return; }
+
+  args[0] = this._namespaceEvent(eventName);
+
+  this._log('off', args);
+  bus.off.apply(bus, args);
+};
+
+BraintreeBus.prototype.off = function (eventName, originalHandler) {
+  var i, listener;
+  var handler = originalHandler;
+
+  if (this._isDestroyed) { return; }
+
+  if (this.merchantUrl) {
+    for (i = 0; i < this._listeners.length; i++) {
+      listener = this._listeners[i];
+
+      if (listener.originalHandler === originalHandler) {
+        handler = listener.handler;
+      }
+    }
+  }
+
+  this._offDirect(eventName, handler);
+};
+
+BraintreeBus.prototype._namespaceEvent = function (eventName) {
+  return ['braintree', this.channel, eventName].join(':');
+};
+
+BraintreeBus.prototype.teardown = function () {
+  var listener, i;
+
+  for (i = 0; i < this._listeners.length; i++) {
+    listener = this._listeners[i];
+    this._offDirect(listener.eventName, listener.handler);
+  }
+
+  this._listeners.length = 0;
+
+  this._isDestroyed = true;
+};
+
+BraintreeBus.prototype._log = function (functionName, args) {
+  if (this._isVerbose) {
+    console.log(functionName, args); // eslint-disable-line no-console
+  }
+};
+
+BraintreeBus.events = events;
+
+module.exports = BraintreeBus;
+
+},{"../braintree-error":3,"./check-origin":4,"./events":5,"framebus":2}],7:[function(_dereq_,module,exports){
+'use strict';
+
+function enumerate(values, prefix) {
+  prefix = prefix == null ? '' : prefix;
+
+  return values.reduce(function (enumeration, value) {
+    enumeration[value] = prefix + value;
+
+    return enumeration;
+  }, {});
+}
+
+module.exports = enumerate;
+
+},{}],8:[function(_dereq_,module,exports){
+'use strict';
+
+var parser;
+var legalHosts = {
+  'paypal.com': 1,
+  'braintreepayments.com': 1,
+  'braintreegateway.com': 1,
+  'braintree-api.com': 1
+};
+
+{
+  legalHosts.localhost = 1;
+
+  {
+    legalHosts[stripSubdomains("gateway.bt.local")] = 1;
+  }
+  {
+    legalHosts[stripSubdomains("jsdk.bt.local")] = 1;
+  }
+}
+// endRemoveIf(production)
+
+function stripSubdomains(domain) {
+  return domain.split('.').slice(-2).join('.');
+}
+
+function isWhitelistedDomain(url) {
+  var mainDomain;
+
+  url = url.toLowerCase();
+
+  if (!/^https:/.test(url)) {
+    return false;
+  }
+
+  parser = parser || document.createElement('a');
+  parser.href = url;
+  mainDomain = stripSubdomains(parser.hostname);
+
+  return legalHosts.hasOwnProperty(mainDomain);
+}
+
+module.exports = isWhitelistedDomain;
+
+},{}],9:[function(_dereq_,module,exports){
+(function (global){
+'use strict';
+
+function _notEmpty(obj) {
+  var key;
+
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) { return true; }
+  }
+
+  return false;
+}
+
+/* eslint-disable no-mixed-operators */
+function _isArray(value) {
+  return value && typeof value === 'object' && typeof value.length === 'number' &&
+    Object.prototype.toString.call(value) === '[object Array]' || false;
+}
+/* eslint-enable no-mixed-operators */
+
+function parse(url) {
+  var query, params;
+
+  url = url || global.location.href;
+
+  if (!/\?/.test(url)) {
+    return {};
+  }
+
+  query = url.replace(/#.*$/, '').replace(/^.*\?/, '').split('&');
+
+  params = query.reduce(function (toReturn, keyValue) {
+    var parts = keyValue.split('=');
+    var key = decodeURIComponent(parts[0]);
+    var value = decodeURIComponent(parts[1]);
+
+    toReturn[key] = value;
+
+    return toReturn;
+  }, {});
+
+  return params;
+}
+
+function stringify(params, namespace) {
+  var k, v, p;
+  var query = [];
+
+  for (p in params) {
+    if (!params.hasOwnProperty(p)) {
+      continue;
+    }
+
+    v = params[p];
+
+    if (namespace) {
+      if (_isArray(params)) {
+        k = namespace + '[]';
+      } else {
+        k = namespace + '[' + p + ']';
+      }
+    } else {
+      k = p;
+    }
+    if (typeof v === 'object') {
+      query.push(stringify(v, k));
+    } else {
+      query.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+    }
+  }
+
+  return query.join('&');
+}
+
+function queryify(url, params) {
+  url = url || '';
+
+  if (params != null && typeof params === 'object' && _notEmpty(params)) {
+    url += url.indexOf('?') === -1 ? '?' : '';
+    url += url.indexOf('=') !== -1 ? '&' : '';
+    url += stringify(params);
+  }
+
+  return url;
+}
+
+module.exports = {
+  parse: parse,
+  stringify: stringify,
+  queryify: queryify
+};
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],10:[function(_dereq_,module,exports){
+'use strict';
+
+var querystring = _dereq_('../../lib/querystring');
+var Bus = _dereq_('../../lib/bus');
+var events = _dereq_('../shared/events');
+
+module.exports = function (currentURL) {
+  var params = querystring.parse(currentURL);
+  var bus = new Bus({channel: params.channel});
+
+  bus.emit(events.AUTHENTICATION_COMPLETE, params);
+};
+
+},{"../../lib/bus":6,"../../lib/querystring":9,"../shared/events":14}],11:[function(_dereq_,module,exports){
+'use strict';
+
+var Bus = _dereq_('../../lib/bus');
+var isWhitelistedDomain = _dereq_('../../lib/is-whitelisted-domain');
+var queryString = _dereq_('../../lib/querystring');
+var BraintreeError = _dereq_('../../lib/braintree-error');
+var sanitizeUrl = _dereq_('@braintree/sanitize-url').sanitizeUrl;
+var errors = _dereq_('../shared/errors');
+
+module.exports = function () {
+  var bus = new Bus({
+    channel: window.name.split('_')[1]
+  });
+  var params = queryString.parse();
+
+  if (params.showLoader === 'true') {
+    document.querySelector('#loader').className = '';
+  }
+
+  bus.emit(Bus.events.CONFIGURATION_REQUEST, handleConfiguration);
+};
+
+function handleConfiguration(configuration) {
+  var input, field;
+  var fields = {pareq: 'PaReq', md: 'MD', termUrl: 'TermUrl'};
+  var form = document.createElement('form');
+
+  if (!isWhitelistedDomain(configuration.termUrl)) {
+    throw new BraintreeError(errors.THREEDS_TERM_URL_REQUIRES_BRAINTREE_DOMAIN);
+  }
+
+  form.action = sanitizeUrl(configuration.acsUrl);
+  form.method = 'POST';
+
+  for (field in fields) {
+    if (fields.hasOwnProperty(field)) {
+      input = document.createElement('input');
+      input.name = fields[field];
+      input.type = 'hidden';
+      input.setAttribute('value', configuration[field]);
+      form.appendChild(input);
+    }
+  }
+
+  document.body.appendChild(form);
+
+  form.submit();
+}
+
+},{"../../lib/braintree-error":3,"../../lib/bus":6,"../../lib/is-whitelisted-domain":8,"../../lib/querystring":9,"../shared/errors":13,"@braintree/sanitize-url":1}],12:[function(_dereq_,module,exports){
+'use strict';
+
+module.exports = {
+  initializeBankFrame: _dereq_('./bank-frame'),
+  initializeAuthenticationCompleteFrame: _dereq_('./authentication-complete-frame')
+};
+
+},{"./authentication-complete-frame":10,"./bank-frame":11}],13:[function(_dereq_,module,exports){
+'use strict';
+
+var BraintreeError = _dereq_('../../lib/braintree-error');
+
+module.exports = {
+  THREEDS_AUTHENTICATION_IN_PROGRESS: {
+    type: BraintreeError.types.MERCHANT,
+    code: 'THREEDS_AUTHENTICATION_IN_PROGRESS',
+    message: 'Cannot call verifyCard while existing authentication is in progress.'
+  },
+  THREEDS_MISSING_VERIFY_CARD_OPTION: {
+    type: BraintreeError.types.MERCHANT,
+    code: 'THREEDS_MISSING_VERIFY_CARD_OPTION'
+  },
+  THREEDS_NO_VERIFICATION_PAYLOAD: {
+    type: BraintreeError.types.MERCHANT,
+    code: 'THREEDS_NO_VERIFICATION_PAYLOAD',
+    message: 'No verification payload available.'
+  },
+  THREEDS_NOT_ENABLED: {
+    type: BraintreeError.types.MERCHANT,
+    code: 'THREEDS_NOT_ENABLED',
+    message: '3D Secure is not enabled for this merchant.'
+  },
+  THREEDS_CAN_NOT_USE_TOKENIZATION_KEY: {
+    type: BraintreeError.types.MERCHANT,
+    code: 'THREEDS_CAN_NOT_USE_TOKENIZATION_KEY',
+    message: '3D Secure can not use a tokenization key for authorization.'
+  },
+  THREEDS_HTTPS_REQUIRED: {
+    type: BraintreeError.types.MERCHANT,
+    code: 'THREEDS_HTTPS_REQUIRED',
+    message: '3D Secure requires HTTPS.'
+  },
+  THREEDS_TERM_URL_REQUIRES_BRAINTREE_DOMAIN: {
+    type: BraintreeError.types.INTERNAL,
+    code: 'THREEDS_TERM_URL_REQUIRES_BRAINTREE_DOMAIN',
+    message: 'Term Url must be on a Braintree domain.'
+  }
+};
+
+},{"../../lib/braintree-error":3}],14:[function(_dereq_,module,exports){
+'use strict';
+
+var enumerate = _dereq_('../../lib/enumerate');
+
+module.exports = enumerate([
+  'AUTHENTICATION_COMPLETE'
+], 'threedsecure:');
+
+},{"../../lib/enumerate":7}]},{},[12])(12)
+});
+
+  </script>
+  <script>
+  braintree.threeDSecure.initializeAuthenticationCompleteFrame(location.href);
+  </script>
+
+</body>
+</html>

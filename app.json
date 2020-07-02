@@ -1,0 +1,24 @@
+{
+  "name": "Braintree Cookie Test",
+  "description": "A sample implementation for Paymentus cookie concerns",
+  "success_url": "/",
+  "env": {
+    "BT_ENVIRONMENT": {
+      "description": "Run against Braintree sandbox environment",
+      "required": true,
+      "value": "sandbox"
+    },
+    "BT_MERCHANT_ID": {
+      "description": "Your Braintree Merchant ID",
+      "required": true
+    },
+    "BT_PUBLIC_KEY": {
+      "description": "Your Braintree Public Key",
+      "required": true
+    },
+    "BT_PRIVATE_KEY": {
+      "description": "Your Braintree Private Key",
+      "required": true
+    }
+  }
+}

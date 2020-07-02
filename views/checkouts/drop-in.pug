@@ -1,0 +1,47 @@
+extends ../layout
+
+block content
+  header.row
+    .col
+      h2.display-2 Drop-In
+      p.lead Make a test payment
+
+  .row
+    .col
+      .form-check.form-check-inline
+        input#with-3DS.form-check-input(type="checkbox" value='{ "threeDSecure": true }')
+        label.form-check-label(for="with-3DS") Three D Secure
+      .form-check.form-check-inline
+        input#with-PayPal.form-check-input(type="checkbox" value='{ "paypal" : { "flow": "vault" }}')
+        label.form-check-label(for="with-PayPal") PayPal
+      .form-check.form-check-inline
+        input#with-data-collector.form-check-input(type="checkbox" value='{ "dataCollector" : { "paypal": true }}')
+        label.form-check-label(for="with-data-collector") Data collector
+      .form-check.form-check-inline
+        input#with-google-pay.form-check-input(type="checkbox" value='{ "googlePay" : { "environment": "TEST", "transactionInfo": { "currencyCode": "USD", "totalPriceStatus": "FINAL", "totalPrice": "10.00" } }}')
+        label.form-check-label(for="with-google-pay") Google Pay
+      .form-check.form-check-inline
+        input#with-venmo.form-check-input(type="checkbox" value='{ "venmo": true }')
+        label.form-check-label(for="with-venmo") Venmo
+  .row.mb-3
+    .col
+      button#mount.btn.btn-outline-primary.btn-block(type="button") Mount Drop-in with options
+    .col
+      button#teardown.btn.btn-outline-secondary.btn-block(type="button" disabled="true") Teardown Drop-in
+
+  .row.mb-3
+    .col
+      form#payment-form(action="/checkouts" method="post")
+        .form-row.mb-0
+          .form-group.col
+            label(for="amount") Amount
+            input#amount.form-control(name="amount" type="tel" min="1" value="10")
+
+        #bt-dropin
+
+        input#nonce(type="hidden" name="nonce")
+        input#integration(type="hidden" name="integration" value="drop-in")
+
+        .form-row
+          .col
+            button#submit-button.btn.btn-lg.btn-block.btn-primary(type="submit" disabled="true") Test Transaction

@@ -1,0 +1,128 @@
+extends ../layout
+
+block content
+  header.row
+    if result && result.message
+      .icon.col-1
+        img(src=`/images/${result.icon}.svg` alt="")
+
+      .col
+        h2.display-2=result.header
+        p.lead= result.message
+
+      .col-2
+        a.btn.btn-secondary(href=`/${returnTo}`)
+          span Test Another Transaction
+    else
+      .col
+        p.lead #[a(href=`/${returnTo}`) Test another transaction] or see the Braintree API response.
+
+  article.row
+    .col
+      header
+        h3 API Response
+
+      section
+        h4 Transaction
+
+        table.table
+          tbody
+            tr
+              th id
+              td= transaction.id
+            tr
+              th type
+              td= transaction.type
+            tr
+              th amount
+              td= transaction.amount
+            tr
+              th status
+              td= transaction.status
+            tr
+              th createdAt
+              td= transaction.createdAt
+            tr
+              th updatedAt
+              td= transaction.updatedAt
+
+      section
+        h4 Payment
+
+        table.table
+          tbody
+            tr
+              th token
+              td= transaction.creditCard.token
+            tr
+              th bin
+              td= transaction.creditCard.bin
+            tr
+              th last4
+              td= transaction.creditCard.last4
+            tr
+              th cardType
+              td= transaction.creditCard.cardType
+            tr
+              th expirationDate
+              td= transaction.creditCard.expirationDate
+            tr
+              th cardholderName
+              td= transaction.creditCard.cardholderName
+            tr
+              th customerLocation
+              td= transaction.creditCard.customerLocation
+
+      if transaction.customerDetails
+        section
+          h4 Customer
+
+          table.table
+            tbody
+              tr
+                th id
+                td= transaction.customer.id
+              tr
+                th firstName
+                td= transaction.customer.firstName
+              tr
+                th lastName
+                td= transaction.customer.lastName
+              tr
+                th email
+                td= transaction.customer.email
+              tr
+                th company
+                td= transaction.customer.company
+              tr
+                th website
+                td= transaction.customer.website
+              tr
+                th phone
+                td= transaction.customer.phone
+              tr
+                th fax
+                td= transaction.customer.fax
+
+      if transaction.threeDSecureInfo
+        section
+          h5 Three D Secure
+
+          table.table
+            tbody
+              tr
+                th enrolled
+                td= transaction.threeDSecureInfo.enrolled
+              tr
+                th status
+                td= transaction.threeDSecureInfo.status
+              tr
+                th liabilityShifted
+                td= transaction.threeDSecureInfo.liabilityShifted
+              tr
+                th liabilityShiftPossible
+                td= transaction.threeDSecureInfo.liabilityShiftPossible
+
+      section
+        a.btn.btn-secondary(href="https://developers.braintreepayments.com/guides/drop-in", target="_blank")
+          span See the Docs

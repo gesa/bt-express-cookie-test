@@ -1,0 +1,53 @@
+{
+  "name": "bt-cookie-test",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "eslint .",
+    "dev": "run-p watch:*",
+    "start": "webpack && node -r esm ./server",
+    "test": "jest",
+    "watch:js": "webpack --watch",
+    "watch:server": "DEBUG=\"braintree:*\" nodemon --watch ./server --ignore server/__tests__ --exec babel-node ./server"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.8.7",
+    "@babel/node": "^7.8.7",
+    "@babel/preset-env": "^7.10.4",
+    "babel-loader": "^8.0.6",
+    "css-loader": "^3.4.2",
+    "eslint": "^6.8.0",
+    "eslint-config-braintree": "^4.0.0",
+    "eslint-config-prettier": "^6.11.0",
+    "jest": "^25.1.0",
+    "nodemon": "^2.0.2",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^1.19.1",
+    "supertest": "^4.0.2",
+    "webpack": "^4.42.0",
+    "webpack-cli": "^3.3.11"
+  },
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "braintree": "^2.23.0",
+    "braintree-web": "^3.62.2",
+    "braintree-web-drop-in": "^1.22.1",
+    "connect-flash": "~0.1.1",
+    "debug": "^4.1.1",
+    "dotenv": "^8.2.0",
+    "esm": "^3.2.25",
+    "express": "^4.17.1",
+    "express-session": "^1.17.0",
+    "morgan": "^1.9.1",
+    "pug": "^2.0.4",
+    "serve-favicon": "^2.5.0"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserslist": [
+    "last 2 version",
+    "> 2%",
+    "ie 10-11"
+  ]
+}

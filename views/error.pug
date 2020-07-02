@@ -1,0 +1,8 @@
+extends layout
+
+block content
+  .row
+    header.col
+      h2.display-2= message
+      h3.display-3= error.status
+      pre= error.stack

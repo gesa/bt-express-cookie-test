@@ -1,0 +1,327 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <style>
+      #container {
+        text-align: center;
+        font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+        margin-top: 100px;
+      }
+      #redirect {
+        color: #fff;
+        background-color: #009be1;
+        font-size: 1.2rem;
+        font-weight: 600;
+        padding-top: 1.375em;
+        padding-bottom: 1.375em;
+        margin-bottom: 1.5em;
+        width: 100%;
+        line-height: 1.7144;
+        text-decoration: none;
+        cursor: pointer;
+        display: inline-block;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+    (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}(g.braintree || (g.braintree = {})).localPayment = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(_dereq_,module,exports){
+'use strict';
+
+var invalidPrototcolRegex = /^(%20|\s)*(javascript|data)/im;
+var ctrlCharactersRegex = /[^\x20-\x7E]/gmi;
+var urlSchemeRegex = /^([^:]+):/gm;
+var relativeFirstCharacters = ['.', '/']
+
+function isRelativeUrl(url) {
+  return relativeFirstCharacters.indexOf(url[0]) > -1;
+}
+
+function sanitizeUrl(url) {
+  if (!url) {
+    return 'about:blank';
+  }
+
+  var urlScheme, urlSchemeParseResults;
+  var sanitizedUrl = url.replace(ctrlCharactersRegex, '').trim();
+
+  if (isRelativeUrl(sanitizedUrl)) {
+    return sanitizedUrl;
+  }
+
+  urlSchemeParseResults = sanitizedUrl.match(urlSchemeRegex);
+
+  if (!urlSchemeParseResults) {
+    return 'about:blank';
+  }
+
+  urlScheme = urlSchemeParseResults[0];
+
+  if (invalidPrototcolRegex.test(urlScheme)) {
+    return 'about:blank';
+  }
+
+  return sanitizedUrl;
+}
+
+module.exports = {
+  sanitizeUrl: sanitizeUrl
+};
+
+},{}],2:[function(_dereq_,module,exports){
+'use strict';
+
+function enumerate(values, prefix) {
+  prefix = prefix == null ? '' : prefix;
+
+  return values.reduce(function (enumeration, value) {
+    enumeration[value] = prefix + value;
+
+    return enumeration;
+  }, {});
+}
+
+module.exports = enumerate;
+
+},{}],3:[function(_dereq_,module,exports){
+(function (global){
+'use strict';
+
+var events = _dereq_('../shared/events');
+var constants = _dereq_('../shared/constants');
+
+function getServiceId() {
+  return global.name.split('_')[1].split('?')[0];
+}
+
+function getFrame() {
+  var parent = global.opener || global.parent;
+  var frameRef = constants.DISPATCH_FRAME_NAME + '_' + getServiceId();
+  var frame = parent.frames[frameRef];
+
+  if (!frame) {
+    throw new Error('Braintree is inactive');
+  }
+
+  return frame;
+}
+
+function report(err, payload, callback) {
+  var frame;
+
+  try {
+    frame = getFrame();
+  } catch (frameError) {
+    if (callback) {
+      callback(frameError);
+    }
+
+    return;
+  }
+
+  frame.bus.emit(events.DISPATCH_FRAME_REPORT, {
+    err: err,
+    payload: payload
+  }, callback);
+}
+
+function asyncClose() {
+  setTimeout(function () {
+    global.close();
+  }, constants.POPUP_CLOSE_TIMEOUT);
+}
+
+module.exports = {
+  asyncClose: asyncClose,
+  constants: constants,
+  getFrame: getFrame,
+  getServiceId: getServiceId,
+  report: report
+};
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"../shared/constants":4,"../shared/events":5}],4:[function(_dereq_,module,exports){
+'use strict';
+
+module.exports = {
+  DISPATCH_FRAME_NAME: 'dispatch',
+  DISPATCH_FRAME_CLASS: 'braintree-dispatch-frame',
+  POPUP_BASE_OPTIONS: 'resizable,scrollbars',
+  DEFAULT_POPUP_WIDTH: 450,
+  DEFAULT_POPUP_HEIGHT: 535,
+  POPUP_POLL_INTERVAL: 100,
+  POPUP_CLOSE_TIMEOUT: 100
+};
+
+},{}],5:[function(_dereq_,module,exports){
+'use strict';
+
+var enumerate = _dereq_('../../enumerate');
+
+module.exports = enumerate([
+  'DISPATCH_FRAME_READY',
+  'DISPATCH_FRAME_REPORT'
+], 'frameService:');
+
+},{"../../enumerate":2}],6:[function(_dereq_,module,exports){
+(function (global){
+'use strict';
+
+function _notEmpty(obj) {
+  var key;
+
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) { return true; }
+  }
+
+  return false;
+}
+
+/* eslint-disable no-mixed-operators */
+function _isArray(value) {
+  return value && typeof value === 'object' && typeof value.length === 'number' &&
+    Object.prototype.toString.call(value) === '[object Array]' || false;
+}
+/* eslint-enable no-mixed-operators */
+
+function parse(url) {
+  var query, params;
+
+  url = url || global.location.href;
+
+  if (!/\?/.test(url)) {
+    return {};
+  }
+
+  query = url.replace(/#.*$/, '').replace(/^.*\?/, '').split('&');
+
+  params = query.reduce(function (toReturn, keyValue) {
+    var parts = keyValue.split('=');
+    var key = decodeURIComponent(parts[0]);
+    var value = decodeURIComponent(parts[1]);
+
+    toReturn[key] = value;
+
+    return toReturn;
+  }, {});
+
+  return params;
+}
+
+function stringify(params, namespace) {
+  var k, v, p;
+  var query = [];
+
+  for (p in params) {
+    if (!params.hasOwnProperty(p)) {
+      continue;
+    }
+
+    v = params[p];
+
+    if (namespace) {
+      if (_isArray(params)) {
+        k = namespace + '[]';
+      } else {
+        k = namespace + '[' + p + ']';
+      }
+    } else {
+      k = p;
+    }
+    if (typeof v === 'object') {
+      query.push(stringify(v, k));
+    } else {
+      query.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+    }
+  }
+
+  return query.join('&');
+}
+
+function queryify(url, params) {
+  url = url || '';
+
+  if (params != null && typeof params === 'object' && _notEmpty(params)) {
+    url += url.indexOf('?') === -1 ? '?' : '';
+    url += url.indexOf('=') !== -1 ? '&' : '';
+    url += stringify(params);
+  }
+
+  return url;
+}
+
+module.exports = {
+  parse: parse,
+  stringify: stringify,
+  queryify: queryify
+};
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],7:[function(_dereq_,module,exports){
+(function (global){
+'use strict';
+
+var sanitizeUrl = _dereq_('@braintree/sanitize-url').sanitizeUrl;
+var frameService = _dereq_('../../lib/frame-service/internal');
+var querystring = _dereq_('../../lib/querystring');
+
+function start(cb) {
+  // In rare cases (i.e. in IE11 Metro), the parent frame cannot close the popup frame until it has
+  // focus. This timer will close the popup frame if the parent hasn't replied to the event to
+  // indicate that it can close the popup.
+  var closeTimer = setTimeout(function () {
+    global.close();
+  }, 1000);
+  var redirectUrl, returnText;
+  var params = querystring.parse();
+
+  if (params.r && params.t) {
+    redirectUrl = sanitizeUrl(global.decodeURIComponent(params.r));
+    returnText = global.decodeURIComponent(params.t);
+  }
+
+  frameService.report(null, params, function (err) {
+    var link, container;
+
+    clearTimeout(closeTimer);
+
+    if (err && redirectUrl && returnText) {
+      container = document.createElement('div');
+      link = document.createElement('a');
+
+      container.id = 'container';
+      link.href = querystring.queryify(redirectUrl, {
+        btLpToken: params.token,
+        btLpPaymentId: params.paymentId,
+        btLpPayerId: params.PayerID
+      });
+      link.innerText = returnText;
+      link.id = 'redirect';
+
+      container.appendChild(link);
+      document.body.appendChild(container);
+    }
+
+    if (cb) {
+      cb();
+    }
+  });
+}
+
+module.exports = {
+  start: start
+};
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"../../lib/frame-service/internal":3,"../../lib/querystring":6,"@braintree/sanitize-url":1}]},{},[7])(7)
+});
+
+    </script>
+    <script>
+      braintree.localPayment.start();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "extends": [
+    "braintree",
+    "braintree/es6",
+    "prettier"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module"
+  },
+  "env": {
+    "node": true,
+    "es6": true,
+    "jest": true,
+    "jasmine": true
+  },
+  "rules": {
+    "no-console": "off",
+    "object-curly-spacing": [
+      "error",
+      "always",
+      {
+        "arraysInObjects": false,
+        "objectsInObjects": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "clearMocks": true,
+  "collectCoverage": true,
+  "displayName": "server",
+  "restoreMocks": true,
+  "rootDir": "./",
+  "roots": [
+    "<rootDir>/server/"
+  ]
+}
