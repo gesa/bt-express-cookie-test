@@ -5,17 +5,12 @@
   "scripts": {
     "lint": "eslint .",
     "dev": "run-p watch:*",
-    "start": "webpack && node -r esm ./server",
+    "start": "webpack --mode production && node -r esm ./server",
     "test": "jest",
     "watch:js": "webpack --watch",
     "watch:server": "DEBUG=\"braintree:*\" nodemon --watch ./server --ignore server/__tests__ --exec babel-node ./server"
   },
   "devDependencies": {
-    "@babel/core": "^7.8.7",
-    "@babel/node": "^7.8.7",
-    "@babel/preset-env": "^7.10.4",
-    "babel-loader": "^8.0.6",
-    "css-loader": "^3.4.2",
     "eslint": "^6.8.0",
     "eslint-config-braintree": "^4.0.0",
     "eslint-config-prettier": "^6.11.0",
@@ -25,11 +20,16 @@
     "supertest": "^4.0.2"
   },
   "dependencies": {
+    "@babel/core": "^7.8.7",
+    "@babel/node": "^7.8.7",
+    "@babel/preset-env": "^7.10.4",
+    "babel-loader": "^8.0.6",
     "body-parser": "^1.19.0",
     "braintree": "^2.23.0",
     "braintree-web": "^3.62.2",
     "braintree-web-drop-in": "^1.22.1",
     "connect-flash": "~0.1.1",
+    "css-loader": "^3.4.2",
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
     "esm": "^3.2.25",
